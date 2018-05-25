@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const childProcess = require('child_process')
 const https = require('https')
 const URL = require('url')
@@ -324,4 +325,3 @@ const squash = () => {
 }
 
 squash()
-
