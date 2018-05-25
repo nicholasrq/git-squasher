@@ -60,16 +60,20 @@ After all the preparation it will ask you few simple questions to provide smooth
 
 Now Squasher is able to squash all of your commits into single commit that will contain all the changes. This process looks like this:
 
-`%commit_hash%` – hash to reset branch (typically – latest commit from `master`)
-`%commit_message%` – PR title or custom commit message
-`%branch_name%` – current branch name
+- `%commit_hash%` – hash to reset branch (typically – latest commit from `master`)
+- `%commit_message%` – PR title or custom commit message
+- `%branch_name%` – current branch name
 
 ```bash
 # First Suqasher will pull changes from the server
 git pull
+# Now we reset branch to desired commit
 git reset %commit_hash%
+# Stage all changed
 git add . -A
+# Commit changes with default message or with one provided by user
 git commit -m "%commit_message%"
+# Forcely push to origin
 git push -f origin %branch_name%
 ```
 
