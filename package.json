@@ -9,6 +9,10 @@
   "bin": {
     "git-squash": "./index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholasrq/git-squasher"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC"
