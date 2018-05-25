@@ -14,38 +14,46 @@ or
 yarn global add git-squasher
 ```
 
+## Usage
+
+Squasher provides cli command that you can run inside of your repos.
+
+```
+git-squash
+```
+
 ## About
 
 Squasher uses `git` commands and GitHub API to get all the necessary information
 to provide the safest way of squashing commits.
 
 Squashy uses last commit on your default branch (master in most cases) to reset
-HEAD, then it adds all the files to staged area, commits them and forcely pushes
+HEAD, then it adds all the files to staged area, commits them and forcibly pushes
 it to origin.
 
 You can provide Squasher different commit or branch if you'd like, the tool will
 ask you for that.
 
-Also it will ensure that your branch is up-to-date and has no uncommited
+Also it will ensure that your branch is up-to-date and has no uncommitted
 changes. If it detects that your branch is outdated, script will just stop and
 ask you to commit changes and/or pull data from origin.
 
 Squasher uses PR title as default commit message, if no PR exists, then you'll
-have to provide commit message manually. Default commit message can be overriden.
+have to provide commit message manually. Default commit message can be overridden.
 
 ## What squasher does
 
 ### Preparation
 
-There are few steps that Squasher does before quashing:
+There are few steps that Squasher does before squashing:
 
 1. Detects repo remote, owner username and repo name
 2. Detects default branch (it's `master` in most cases)
 3. Detects if there's a pull request using GitHub API (works both for personal and enterprise accounts)
 4. Detects latest commit on default branch (hash and commit message)
-4. Squasher will also check if you have uncommited changes or your current working tree is below other changes
+4. Squasher will also check if you have uncommitted changes or your current working tree is below other changes
 
-**Squasher will stop immediatelly if your branch is outdated or has uncommited changed**
+**Squasher will stop immediately if your branch is outdated or has uncommitted changed**
 
 ### Squash info
 
@@ -73,11 +81,11 @@ git reset %commit_hash%
 git add . -A
 # Commit changes with default message or with one provided by user
 git commit -m "%commit_message%"
-# Forcely push to origin
+# Forcibly push to origin
 git push -f origin %branch_name%
 ```
 
-If anything bad happened during squashing – Squasher will reset your branch to privous state using `git reflog` – it will look up point in history when reset to `%commit_hash%` occurred and will reset branch to one step before it.
+If anything bad happened during squashing – Squasher will reset your branch to privies state using `git reflog` – it will look up point in history when reset to `%commit_hash%` occurred and will reset branch to one step before it.
 
 # Restrictions
 
