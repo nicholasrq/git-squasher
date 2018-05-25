@@ -217,6 +217,11 @@ const squash = () => {
     `git remote show ${origin.remote} | grep "HEAD branch" | cut -d ":" -f 2`
   )
 
+  if (branchName === defaultBranch) {
+    out("It's not a good idea to squash commits in default branch")
+    process.exit()
+  }
+
   out('Welcome to Squashy – the tool to automatically squash your commits')
   out(`Repo   - ${origin.username}/${origin.repo}`)
   out(`Branch - ${branchName}`)
@@ -272,6 +277,11 @@ const squash = () => {
       out(`Revision to reset to: [${parentBranchName} - ${commitHash.substr(0, 7)}] ${commitMessage}`)
 
       const changedFiles = exec(`git diff --stat ${commitHash} HEAD | cat`)
+
+      if (changedFiles.length === 0) {
+        out('No changes. Nothing to squash')
+        process.exit()
+      }
 
       out(`Changes since last commit in ${parentBranchName}`)
       out(changedFiles);

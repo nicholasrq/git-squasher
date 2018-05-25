@@ -1,7 +1,23 @@
+# Squasher
+
 This is JS cli with no dependencies to squash many commits to a single one.
 
-It uses `git` commands and GitHub API to get all the necessary information to
-provide safe way of squashing commits.
+## Installation
+
+```
+npm install -g git-squasher
+```
+
+or
+
+```
+yarn global add git-squasher
+```
+
+## About
+
+Squasher uses `git` commands and GitHub API to get all the necessary information
+to provide the safest way of squashing commits.
 
 Squashy uses last commit on your default branch (master in most cases) to reset
 HEAD, then it adds all the files to staged area, commits them and forcely pushes
@@ -16,3 +32,51 @@ ask you to commit changes and/or pull data from origin.
 
 Squasher uses PR title as default commit message, if no PR exists, then you'll
 have to provide commit message manually. Default commit message can be overriden.
+
+## What squasher does
+
+### Preparation
+
+There are few steps that Squasher does before quashing:
+
+1. Detects repo remote, owner username and repo name
+2. Detects default branch (it's `master` in most cases)
+3. Detects if there's a pull request using GitHub API (works both for personal and enterprise accounts)
+4. Detects latest commit on default branch (hash and commit message)
+4. Squasher will also check if you have uncommited changes or your current working tree is below other changes
+
+**Squasher will stop immediatelly if your branch is outdated or has uncommited changed**
+
+### Squash info
+
+After all the preparation it will ask you few simple questions to provide smooth squash.
+
+1. It will show you all the information it has: username and repo name, branch name, repo title (if any)
+2. It will prompt you that is uses default branch and will offer you to change any other if necessary. You can provide commit hash, branch name or short hash (first 7 characters from commit hash). You you're providing branch name, then Squasher will try to get latest commit on it.
+3. After that Squasher will show all the changes since selected commit and will ask you to confirm that it's OK. You need to explicitly confirm it, otherwise Squasher will stop.
+4. Squasher will ask you for commit message. It will use PR title if it exists as a default commit message. If there's no PR for the branch, then you'll have to type commit message manually
+
+### Squashing process
+
+Now Squasher is able to squash all of your commits into single commit that will contain all the changes. This process looks like this:
+
+`%commit_hash%` – hash to reset branch (typically – latest commit from `master`)
+`%commit_message%` – PR title or custom commit message
+`%branch_name%` – current branch name
+
+```bash
+# First Suqasher will pull changes from the server
+git pull
+git reset %commit_hash%
+git add . -A
+git commit -m "%commit_message%"
+git push -f origin %branch_name%
+```
+
+If anything bad happened during squashing – Squasher will reset your branch to privous state using `git reflog` – it will look up point in history when reset to `%commit_hash%` occurred and will reset branch to one step before it.
+
+# Restrictions
+
+* Squasher currently doesn't work with private repos
+* Squasher will stop if you're on default branch
+* Squasher will stop if there are no changes since last `%commit_hash%`
