@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "git-squash": "index.js"
+    "git-squash": "./index.js"
   },
   "keywords": [],
   "author": "",
