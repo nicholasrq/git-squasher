@@ -85,7 +85,7 @@ git commit -m "%commit_message%"
 git push -f origin %branch_name%
 ```
 
-If anything bad happened during squashing – Squasher will reset your branch to privies state using `git reflog` – it will look up point in history when reset to `%commit_hash%` occurred and will reset branch to one step before it.
+If anything bad happened during squashing – Squasher will reset your branch to previous state using `git reflog` – it will look up point in history when reset to `%commit_hash%` occurred and will reset branch to one step before it.
 
 # Restrictions
 
