@@ -1,6 +1,6 @@
 # Squasher
 
-This is JS cli with no dependencies to squash many commits to a single one.
+This is JS cli tool to squash many commits to a single one.
 
 ## Installation
 
@@ -20,6 +20,14 @@ Squasher provides cli command that you can run inside of your repos.
 
 ```
 git-squash
+```
+
+## Using with private repos
+
+In order to be able to use this tool with private repo you need to provide a PAT (Personal Access Token). Create a new token first using [this guide](https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line), then navigate to your local repo using terminal and ad newly created token to a local config file using command:
+
+```
+git config user.pat [paste your token here] --local
 ```
 
 ## About
