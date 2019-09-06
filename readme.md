@@ -97,6 +97,5 @@ If anything bad happened during squashing – Squasher will reset your branch to
 
 # Restrictions
 
-* Squasher currently doesn't work with private repos
 * Squasher will stop if you're on default branch
 * Squasher will stop if there are no changes since last `%commit_hash%`
