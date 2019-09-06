@@ -2,6 +2,7 @@
 const childProcess = require('child_process')
 const https = require('https')
 const URL = require('url')
+const parseConfig = require('parse-git-config')
 
 const out = (message = '') => {
   console.log(message.trim().split('\n').map(r => r.trim()).join('\n'))
@@ -73,7 +74,9 @@ const getOrigin = () => {
   }
 }
 
+const gitConfig = parseConfig.sync()
 const origin = getOrigin()
+const PAT = (gitConfig && gitConfig.user && gitConfig.user.pat) || null
 
 const request = (url, redirect=0) => {
   return new Promise((resolve) => {
@@ -83,7 +86,14 @@ const request = (url, redirect=0) => {
     const options = {
       host: targetURL.host,
       path: targetURL.path,
-      query: targetURL.query
+      query: targetURL.query,
+    }
+
+    if (PAT) {
+      options.headers = {
+        "Authorization": `token ${PAT}`,
+        "User-Agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Safari/605.1.15'
+      }
     }
 
     const callback = function(response) {
@@ -112,6 +122,7 @@ const request = (url, redirect=0) => {
             return resolve(json)
           }
         }
+
         return resolve(null)
       });
     }
@@ -120,30 +131,27 @@ const request = (url, redirect=0) => {
   })
 }
 
-const getPR = (branchName, origin) => {
+const getPR = async (branchName, origin) => {
   if (!branchName || !origin) {
     return Promise.resolve(null)
   }
-  return new Promise((resolve) => {
-    const repo = `${origin.username}/${origin.repo}`
-    const apiURL = `https://api.${origin.hostname}/repos/${repo}/pulls`
+  const repo = `${origin.username}/${origin.repo}`
+  const apiURL = `https://api.${origin.hostname}/repos/${repo}/pulls`
+  const response = await request(apiURL)
 
-    request(apiURL).then((response) => {
-      if (response && response.length > 0) {
-        const pull = false || response.find((p) => {
-          return p.head.ref === branchName
-        })
-
-        return resolve(pull ? {
-          title: pull.title,
-          number: pull.number,
-          username: pull.user.login
-        } : null)
-      } else {
-        resolve(null)
-      }
+  if (response && response.length > 0) {
+    const pull = false || response.find((p) => {
+      return p.head.ref === branchName
     })
-  })
+
+    return pull ? {
+      title: pull.title,
+      number: pull.number,
+      username: pull.user.login
+    } : null
+  }
+
+  return null
 }
 
 const readline = {
@@ -207,7 +215,7 @@ const reflogReset = (commitHash) => {
   }
 }
 
-const squash = () => {
+const squash = async () => {
   // return
   const branchName = exec(
     `git branch 2> /dev/null | grep \\* | cut -d ' ' -f2`
@@ -217,14 +225,22 @@ const squash = () => {
     `git remote show ${origin.remote} | grep "HEAD branch" | cut -d ":" -f 2`
   )
 
+  const pull = await getPR(branchName, origin)
+
   if (branchName === defaultBranch) {
     out("It's not a good idea to squash commits in default branch")
     process.exit()
   }
 
   out('Welcome to Squashy – the tool to automatically squash your commits')
-  out(`Repo   - ${origin.username}/${origin.repo}`)
-  out(`Branch - ${branchName}`)
+  out(`Repo       - ${origin.username}/${origin.repo}`)
+  out(`Branch     - ${branchName}`)
+  if (PAT) {
+    out(`Using PAT  – ${PAT}`)
+  }
+  if (pull) {
+    out(`PR         - [#${pull.number}] ${pull.title}`)
+  }
 
   if (exec('git diff-index HEAD').length > 0) {
     out()
@@ -247,89 +263,82 @@ const squash = () => {
   let commitHash = getLastCommitHash(parentBranchName)
   let commitMessage = getCommitMessage(commitHash)
 
-  getPR(branchName, origin).then((pull) => {
+  out()
+  out(`By default we use latest commit in '${parentBranchName}' to squash`)
+  out(`If you'd like, you can use specific commit or branch`)
 
-    if (pull) {
-      out(`PR     - [#${pull.number}] ${pull.title}`)
+  readline.ask(`Branch name or commit hash (${parentBranchName}):`, (input) => {
+    if (input) {
+      const _commitHash = getLastCommitHash(input)
+      const _branchName = _commitHash ? input : parentBranchName
+      const _commitMessage = getCommitMessage(commitHash || input)
+
+      if (_commitHash && _commitMessage) {
+        parentBranchName = _branchName
+        commitHash = _commitHash
+        commitMessage = _commitMessage
+      } else {
+        out('Invalid input');
+        process.exit(1)
+      }
     }
 
     out()
-    out(`By default we use latest commit in '${parentBranchName}' to squash`)
-    out(`If you'd like, you can use specific commit or branch`)
+    out(`Revision to reset to: [${parentBranchName} - ${commitHash.substr(0, 7)}] ${commitMessage}`)
 
-    readline.ask(`Branch name or commit hash (${parentBranchName}):`, (input) => {
-      if (input) {
-        const _commitHash = getLastCommitHash(input)
-        const _branchName = _commitHash ? input : parentBranchName
-        const _commitMessage = getCommitMessage(commitHash || input)
+    const changedFiles = exec(`git diff --stat ${commitHash} HEAD | cat`)
 
-        if (_commitHash && _commitMessage) {
-          parentBranchName = _branchName
-          commitHash = _commitHash
-          commitMessage = _commitMessage
+    if (changedFiles.length === 0) {
+      out('No changes. Nothing to squash')
+      process.exit()
+    }
+
+    out(`Changes since last commit in ${parentBranchName}`)
+    out(changedFiles);
+
+    out()
+    readline.ask('Does it look OK? [y/N]', (input) => {
+      const answer = (input || 'N').toUpperCase()
+
+      if (answer === 'Y') {
+        out()
+        out('Now we need commit message')
+        if (pull) {
+          out(`Default commit message: ${pull.title}`)
         } else {
-          out('Invalid input');
-          process.exit(1)
+          out(`As there's no PR for this branch you have to provide commit message`)
         }
-      }
-
-      out()
-      out(`Revision to reset to: [${parentBranchName} - ${commitHash.substr(0, 7)}] ${commitMessage}`)
-
-      const changedFiles = exec(`git diff --stat ${commitHash} HEAD | cat`)
-
-      if (changedFiles.length === 0) {
-        out('No changes. Nothing to squash')
-        process.exit()
-      }
-
-      out(`Changes since last commit in ${parentBranchName}`)
-      out(changedFiles);
-
-      out()
-      readline.ask('Does it look OK? [y/N]', (input) => {
-        const answer = (input || 'N').toUpperCase()
-
-        if (answer === 'Y') {
-          out()
-          out('Now we need commit message')
-          if (pull) {
-            out(`Default commit message: ${pull.title}`)
-          } else {
-            out(`As there's no PR for this branch you have to provide commit message`)
+        readline.ask('Enter commit message:', (commitMessage) => {
+          commitMessage = commitMessage || (pull && pull.title)
+          if (!commitMessage) {
+            out(`There's no PR for current branch, so we don't have default commit messgae`)
+            return false
           }
-          readline.ask('Enter commit message:', (commitMessage) => {
-            commitMessage = commitMessage || (pull && pull.title)
-            if (!commitMessage) {
-              out(`There's no PR for current branch, so we don't have default commit messgae`)
-              return false
-            }
 
-            execChain([
-              () => out(`Reset HEAD to [${parentBranchName} – ${commitHash}]`),
-              `git pull > /dev/null`,
-              `git reset ${commitHash} > /dev/null`,
-              () => out(`Commiting to ${branchName}`),
-              `git add . -A > /dev/null`,
-              `git commit -m "${commitMessage}"`,
-              () => out(`Pushing to origin`),
-              `git push -f origin $branch_name > /dev/null`,
-            ]).catch(() => {
-              out(`Error. Rolling back changes`)
-              reflogReset(commitHash)
+          execChain([
+            () => out(`Reset HEAD to [${parentBranchName} – ${commitHash}]`),
+            `git pull > /dev/null`,
+            `git reset ${commitHash} > /dev/null`,
+            () => out(`Commiting to ${branchName}`),
+            `git add . -A > /dev/null`,
+            `git commit -m "${commitMessage}"`,
+            () => out(`Pushing to origin`),
+            `git push -f origin $branch_name > /dev/null`,
+          ]).catch(() => {
+            out(`Error. Rolling back changes`)
+            reflogReset(commitHash)
 
-              const hash = getLastCommitHash(branchName)
-              const message = getCommitMessage(hash)
-              out(`You're now at [${hash.substr(0,7)}] ${message}`)
-            }).then(() => {
-              readline.close()
-            })
+            const hash = getLastCommitHash(branchName)
+            const message = getCommitMessage(hash)
+            out(`You're now at [${hash.substr(0,7)}] ${message}`)
+          }).then(() => {
+            readline.close()
           })
-        } else {
-          out('Bye!')
-          readline.close()
-        }
-      })
+        })
+      } else {
+        out('Bye!')
+        readline.close()
+      }
     })
   })
 }
